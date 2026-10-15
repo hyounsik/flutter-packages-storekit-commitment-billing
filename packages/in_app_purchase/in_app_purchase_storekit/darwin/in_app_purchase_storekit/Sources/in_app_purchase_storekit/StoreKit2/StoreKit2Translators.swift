@@ -57,7 +57,7 @@ extension Product.SubscriptionInfo {
 
     var terms: [SK2PricingTermsMessage]?
     if #available(iOS 26.4, macOS 26.4, tvOS 26.4, visionOS 26.4, *) {
-      terms = pricingTerms.map { $0.convertToPigeon }
+      terms = pricingTerms.compactMap { $0.convertToPigeon }
     }
 
     return SK2SubscriptionInfoMessage(
@@ -71,8 +71,15 @@ extension Product.SubscriptionInfo {
 
 @available(iOS 26.4, macOS 26.4, tvOS 26.4, visionOS 26.4, *)
 extension Product.SubscriptionInfo.BillingPlanType {
-  var convertToPigeon: SK2BillingPlanTypeMessage {
-    return self == .monthly ? .monthly : .upFront
+  /// `BillingPlanType` is an open struct, so Apple can add plan types later.
+  /// An unknown type returns `nil` instead of being reported as up front,
+  /// which would let an app show it as a regular full price.
+  var convertToPigeon: SK2BillingPlanTypeMessage? {
+    switch self {
+    case .monthly: return .monthly
+    case .upFront: return .upFront
+    default: return nil
+    }
   }
 }
 
@@ -89,8 +96,9 @@ extension Product.SubscriptionInfo.CommitmentInfo {
 
 @available(iOS 26.4, macOS 26.4, tvOS 26.4, visionOS 26.4, *)
 extension Product.SubscriptionInfo.PricingTerms {
-  var convertToPigeon: SK2PricingTermsMessage {
-    let planType = billingPlanType.convertToPigeon
+  /// `nil` when the plan type is unknown, so the terms are left out entirely.
+  var convertToPigeon: SK2PricingTermsMessage? {
+    guard let planType = billingPlanType.convertToPigeon else { return nil }
     return SK2PricingTermsMessage(
       billingPlanType: planType,
       billingPrice: NSDecimalNumber(decimal: billingPrice).doubleValue,
