@@ -92,9 +92,16 @@ extension InAppPurchasePlugin: InAppPurchase2API {
           purchaseOptions.insert(.introductoryOfferEligibility(compactJWS: compactJWS))
         }
 
-        if #available(iOS 26.4, macOS 26.4, tvOS 26.4, visionOS 26.4, *) {
-          if let billingPlanType = options?.billingPlanType {
+        if let billingPlanType = options?.billingPlanType {
+          if #available(iOS 26.4, macOS 26.4, tvOS 26.4, visionOS 26.4, *) {
             purchaseOptions.insert(.billingPlanType(billingPlanType.convertFromPigeon))
+          } else if billingPlanType == .monthly {
+            // Dropping the option would silently charge the full up-front price.
+            let error = PigeonError(
+              code: "storekit2_billing_plan_unsupported",
+              message: "Monthly billing plans require iOS 26.4 / macOS 26.4 or later.",
+              details: "Product ID: \(id)")
+            return completion(.failure(error))
           }
         }
 
